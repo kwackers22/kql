@@ -1,2 +1,3 @@
 *.secret
-launch.json
+//launch.json
+.vscode*
