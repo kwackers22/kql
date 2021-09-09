@@ -1,0 +1,9 @@
+// Main Support -
+DeviceProcessEvents
+| where FolderPath startswith "C:\\Program Files\\Open Text\\"
+| summarize count() by FolderPath
+| order by count_
+
+// C:\Program Files\Open Text\Email Filing\QuickFile\Traen.EmailFiling.QuickFileExporter.exe
+// C:\Program Files\Open Text\Email Filing\DMMarkEmail.exe
+// C:\Program Files\Open Text\Email Filing\EmailAutoBulkFiling.exe

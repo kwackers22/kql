@@ -1,0 +1,91 @@
+//////////////////////////
+// AV Protection Status //
+//////////////////////////
+let listScid = dynamic(["scid-91" // Enable Microsoft Defender Antivirus real-time behavior monitoring
+                        , "scid-92" // Enable Microsoft Defender Antivirus scanning of downloaded files and attachments
+                        , "scid-2010" // Turn on Microsoft Defender Antivirus
+                        , "scid-2003" // Turn on Tamper Protection
+                        , "scid-2016" // Enable cloud-delivered protection
+                        , "scid-2014" // Fix Windows Defender Antivirus cloud service connectivity
+                        , "scid-2012" // Turn on real-time protection
+                        ]);
+DeviceTvmSecureConfigurationAssessment
+| extend DataCollectionDate = Timestamp
+| where ConfigurationId in (listScid)
+    // Get additional details on Configuration item
+    | join kind=inner DeviceTvmSecureConfigurationAssessmentKB on ConfigurationId
+| where IsCompliant == False
+// Only include Devices that have checked-in in last 30 days
+| join kind=inner (DeviceInfo
+    | where Timestamp > ago(30d)
+    | summarize arg_max(Timestamp,*) by DeviceName
+    | extend LastSeen = Timestamp
+    ) on $left.DeviceId ==  $right.DeviceId
+// Group ConfigurationName by OS
+| summarize ProtectionDisabledCount = count() by ConfigurationName, OSPlatform
+| order by ConfigurationName, OSPlatform
+// Group multiple ConfigurationNames by device
+//| summarize Protection = makeset(ConfigurationName) by DeviceName, OSPlatform
+//| order by DeviceName
+
+/////////////////////////
+// AV Signature Status //
+/////////////////////////
+DeviceTvmSecureConfigurationAssessment
+| extend DataCollectionDate = Timestamp
+| where ConfigurationId == "scid-2011" // Update Microsoft Defender for Windows Antivirus definitions
+| join kind=leftouter DeviceTvmSecureConfigurationAssessmentKB on ConfigurationId
+| mv-expand  e = parse_json(Context)
+| project Timestamp, DeviceName,DeviceId, OSPlatform, SignatureVersion=tostring(e[0]), SignatureDate=todatetime(e[2]), EngineVersion=e[1], ProductVersion=e[3], DataCollectionDate
+| join kind=inner (DeviceInfo
+    | where Timestamp > ago(30d)
+    | summarize arg_max(Timestamp,*) by DeviceName
+    | extend LastSeen = Timestamp
+    ) on $left.DeviceId ==  $right.DeviceId
+| project Timestamp, DeviceName, DeviceId, OSPlatform, SignatureVersion, SignatureDate, EngineVersion, ProductVersion, LastSeen, DataCollectionDate
+| extend signatureSplit = split(SignatureVersion, ".")
+| extend Status = iif(signatureSplit[1] >= 349 and signatureSplit[2] >= 22, "SignatureUpToDate", "SignatureNOTUpToDate")
+| summarize count() by Status
+
+
+//////////////
+// Combined //
+//////////////
+let listScid = dynamic(["scid-91" // Enable Microsoft Defender Antivirus real-time behavior monitoring
+                        , "scid-92" // Enable Microsoft Defender Antivirus scanning of downloaded files and attachments
+                        , "scid-2010" // Turn on Microsoft Defender Antivirus
+                        //, "scid-2003" // Turn on Tamper Protection
+                        //, "scid-2016" // Enable cloud-delivered protection
+                        //, "scid-2014" // Fix Windows Defender Antivirus cloud service connectivity
+                        , "scid-2012" // Turn on real-time protection
+                        ]);
+DeviceTvmSecureConfigurationAssessment
+| where ConfigurationId == "scid-2011" // Update Microsoft Defender for Windows Antivirus definitions
+| join kind=leftouter
+    (DeviceTvmSecureConfigurationAssessmentKB) on ConfigurationId
+| mv-expand  e = parse_json(Context)
+| project Timestamp, DeviceName,DeviceId, OSPlatform, SignatureVersion=tostring(e[0]), SignatureDate=todatetime(e[2]), EngineVersion=e[1], ProductVersion=e[3]
+| join kind=inner    (DeviceInfo
+    | where Timestamp > ago(7d)
+    | summarize arg_max(Timestamp,*) by DeviceName
+    | extend LastSeen = Timestamp
+    ) on $left.DeviceId ==  $right.DeviceId
+| extend signatureSplit = split(SignatureVersion, ".")
+| extend Status = iif(signatureSplit[1] >= 349 and signatureSplit[2] >= 22, "SignatureUpToDate", "SignatureNOTUpToDate")
+| project LastSeen, DeviceId, DeviceName, OSPlatform, SignatureVersion, SignatureDate, EngineVersion, ProductVersion, Status
+| join kind=fullouter (DeviceTvmSecureConfigurationAssessment
+    | where ConfigurationId in (listScid)
+    | where IsCompliant == False
+    | join kind=inner
+        (DeviceTvmSecureConfigurationAssessmentKB) on ConfigurationId
+    | summarize ProtectionDisabled = makeset(ConfigurationName) by DeviceId, DeviceName
+    | join kind=inner (DeviceInfo
+        | where Timestamp > ago(7d)
+        | where DeviceType == "Workstation"
+        | summarize arg_max(Timestamp,*) by DeviceName
+        | extend LastSeen = Timestamp
+        ) on $left.DeviceId ==  $right.DeviceId
+    ) on $left.DeviceId ==  $right.DeviceId
+| where (Status == "SignatureNOTUpToDate") or (ProtectionDisabled != "")
+| project LastSeen, DeviceId, DeviceName, SignatureVersion, SignatureDate, Status, ProtectionDisabled
+| order by SignatureVersion asc

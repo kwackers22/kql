@@ -1,0 +1,15 @@
+/////////////////////////////////////
+// Check for logons after phishing //
+/////////////////////////////////////
+//List emails detected as malware, getting only pertinent columns
+let MaliciousEmails=EmailEvents
+    | where ThreatTypes has "Malware"
+    | project TimeEmail = Timestamp, Subject, SenderFromAddress, AccountName = tostring(split(RecipientEmailAddress, "@")[0]);
+MaliciousEmails
+//Merge malicious emails with logon events to find logons by recipients
+| join (IdentityLogonEvents
+    | project LogonTime = Timestamp, AccountName, DeviceName
+    ) on AccountName
+//Check only logons within 30 minutes of receipt of an email
+| where (LogonTime - TimeEmail) between (0min.. 30min)
+| take 10

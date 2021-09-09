@@ -1,0 +1,31 @@
+//////////////////////////////
+// Looks for all ASR events //
+//////////////////////////////
+let rulesList = dynamic([
+                          "AsrAdobeReaderChildProcessAudited", "AsrAdobeReaderChildProcessBlocked"
+                        , "AsrExecutableEmailContentAudited", "AsrExecutableEmailContentBlocked"
+                        , "AsrExecutableOfficeContentAudited", "AsrExecutableOfficeContentBlocked"
+                        , "AsrLsassCredentialTheftAudited", "AsrLsassCredentialTheftBlocked"
+                        , "AsrObfuscatedScriptAudited", "AsrObfuscatedScriptBlocked"
+                        , "AsrOfficeChildProcessAudited", "AsrOfficeChildProcessBlocked"
+                        , "AsrOfficeMacroWin32ApiCallsAudited", "AsrOfficeMacroWin32ApiCallsBlocked"
+                        , "AsrOfficeProcessInjectionAudited", "AsrOfficeProcessInjectionBlocked"
+                        , "AsrPersistenceThroughWmiAudited", "AsrPersistenceThroughWmiBlocked"
+                        , "AsrPsexecWmiChildProcessAudited", "AsrPsexecWmiChildProcessBlocked"
+                        , "AsrRansomwareAudited", "AsrRansomwareBlocked"
+                        , "AsrScriptExecutableDownloadAudited", "AsrScriptExecutableDownloadBlocked"
+                        , "AsrUntrustedExecutableAudited", "AsrUntrustedExecutableBlocked"
+                        , "AsrUntrustedUsbProcessAudited", "AsrUntrustedUsbProcessBlocked"
+                        , "AsrVulnerableSignedDriverAudited", "AsrVulnerableSignedDriverBlocked"
+                        ]);
+let ruleSingle = dynamic(["AsrObfuscatedScriptAudited", "AsrObfuscatedScriptBlocked"]);
+DeviceEvents
+| where ActionType in (rulesList)
+//| where ActionType in (ruleSingle)
+
+///////////////////////////////////
+// Looks for new ASR event types //
+///////////////////////////////////
+DeviceEvents
+| where ActionType startswith "Asr"
+| summarize by ActionType

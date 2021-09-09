@@ -1,0 +1,51 @@
+// Syntax - LeftTable | join [JoinParameters] ( RightTable ) on Attributes
+// https://docs.microsoft.com/en-us/azure/data-explorer/kusto/query/joinoperator?pivots=azuredataexplorer
+
+////////////////////////////////////////
+// Join ConfigAssessment with Details //
+////////////////////////////////////////
+DeviceTvmSecureConfigurationAssessment
+| where ConfigurationId == "scid-2011" // Update Microsoft Defender for Windows Antivirus definitions
+| join kind=leftouter (DeviceTvmSecureConfigurationAssessmentKB) on ConfigurationId
+
+///////////////////////////////////////////
+// Join ConfigAssessment with DeviceInfo //
+///////////////////////////////////////////
+DeviceTvmSecureConfigurationAssessment
+| where ConfigurationId == "scid-2011" // Update Microsoft Defender for Windows Antivirus definitions
+| join kind=leftouter DeviceTvmSecureConfigurationAssessmentKB on ConfigurationId
+| mv-expand  e = parse_json(Context)
+| project Timestamp, DeviceName,DeviceId, OSPlatform, SignatureVersion=tostring(e[0])
+        , SignatureDate=todatetime(e[2]), EngineVersion=e[1], ProductVersion=e[3], DataCollectionDate
+| join kind=inner (DeviceInfo
+    | where Timestamp > ago(30d)
+    | summarize arg_max(Timestamp,*) by DeviceName
+    | extend LastSeen = Timestamp
+    ) on $left.DeviceId ==  $right.DeviceId
+| project Timestamp, DeviceName, DeviceId, OSPlatform, SignatureVersion, SignatureDate, EngineVersion
+        , ProductVersion, LastSeen, DataCollectionDate
+
+//////////////////////////////////
+// Join EmailEvents to Identity //
+//////////////////////////////////
+EmailEvents
+| where Timestamp > ago(7d)
+//Get email processing events where the messages were identified as either phishing or malware
+| where ThreatTypes has "Malware" or ThreatTypes has "Phish"
+//Merge email events with identity info to get recipient details
+| join (IdentityInfo
+    | distinct AccountUpn, AccountDisplayName, JobTitle, Department, City, Country
+    ) on $left.RecipientEmailAddress == $right.AccountUpn
+//Show important message and recipient details
+| project Timestamp, NetworkMessageId, Subject, ThreatTypes, SenderFromAddress
+        , RecipientEmailAddress, AccountDisplayName, JobTitle, Department, City, Country
+
+/////////////////////////////////////////////////
+// DeviceInfo merged to itself after summarize //
+/////////////////////////////////////////////////
+DeviceInfo
+| where Timestamp > ago(1d)
+| summarize Status = makeset(OnboardingStatus) by DeviceId
+| where Status !contains "Onboarded"
+| join kind=inner (DeviceInfo | where Timestamp > ago(1d)) on DeviceId
+| project DeviceName, Status, OSPlatform, Vendor, Model

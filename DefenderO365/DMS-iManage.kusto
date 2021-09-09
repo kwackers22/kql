@@ -1,0 +1,18 @@
+// Main Support -
+DeviceProcessEvents
+| where FolderPath startswith "C:\\Program Files\\Interwoven\\WorkSite\\"
+| summarize count() by FolderPath
+| order by count_
+
+
+// C:\Program Files\Interwoven\WorkSite\ThinClient.exe
+// C:\Program Files\Interwoven\WorkSite\Nrl.exe
+// C:\Program Files\Interwoven\WorkSite\IwlProtocol.exe
+// C:\Program Files\Interwoven\WorkSite\IManPreviewHandler.exe
+// C:\Program Files\Interwoven\WorkSite\PortableClient.exe
+// C:\Program Files\Interwoven\WorkSite\View.exe
+// C:\Program Files\Interwoven\WorkSite\addiman.exe
+// C:\Program Files\Interwoven\WorkSite\iManSendMail.exe
+// C:\Program Files\Interwoven\WorkSite\WESClient.exe
+// C:\Program Files\Interwoven\WorkSite\Win32\iManSendMail.exe
+// C:\Program Files\Interwoven\WorkSite\iOutlook\EmailFiler.exe

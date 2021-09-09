@@ -1,0 +1,26 @@
+// Main Support - https://support.netdocuments.com/hc/en-us
+// Installation locations - https://support.netdocuments.com/hc/en-us/articles/205219920-Locations-of-Installation-Files
+// Use ndOffice to write, edit, and update your work on Microsoft Office Suite products for real-time collaboration with your team.
+// https://support.netdocuments.com/hc/en-us/articles/360003336172-ndOffice-Administration
+let ndOfficeList = dynamic([
+      "AppData\\Local\\Apps\\NetDocuments\\ndOffice"
+    ,
+DeviceProcessEvents
+| where
+    // ndOffice
+    (FolderPath contains "\\AppData\\Local\\Apps\\NetDocuments\\")
+    or (FolderPath contains "C:\\Program Files (x86)\\NetDocuments\\")
+    or (FolderPath contains "\\AppData\\Local\\Temp\\ND")
+| summarize count() by FolderPath
+| order by count_
+
+// C:\Program Files (x86)\Adobe\Acrobat 11.0\Acrobat\Plug_ins
+// C:\Program Files (x86)\Adobe\Reader 11.0\Reader\Plug_ins
+// C:\Program Files (x86)\Adobe\Acrobat DC\Acrobat\Plug_ins
+// C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\Plug_ins
+
+// C:\Program Files (x86)\NetDocuments\ndOffice\eowp.exe
+// C:\Program Files (x86)\NetDocuments\ndOffice\ndOffice.exe
+// C:\Program Files (x86)\NetDocuments\ndMail\NetDocuments.ndMail.Application.exe
+// C:\Program Files (x86)\NetDocuments\ndClick\ndClickWinTray.exe
+// C:\Program Files (x86)\NetDocuments\Folder Import\foldImp.exe - Folder Import Utility

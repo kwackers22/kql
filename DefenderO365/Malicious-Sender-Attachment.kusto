@@ -1,0 +1,12 @@
+///////////////////////////////////////////////////////
+// Check for files sent from known malicious address //
+///////////////////////////////////////////////////////
+EmailAttachmentInfo
+//Get emails with attachments identified by a SHA-256
+| where SenderFromAddress =~ "MaliciousSender@example.com"
+| where isnotempty(SHA256)
+//Check devices for any activity involving the attachments
+| join (DeviceFileEvents
+    | project FileName, SHA256, DeviceName, DeviceId
+    ) on SHA256
+| project Timestamp, FileName , SHA256, DeviceName, DeviceId,  NetworkMessageId, SenderFromAddress, RecipientEmailAddress
